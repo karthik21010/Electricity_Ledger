@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricity Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #f7f5ee;
+    --paper-dark: #eee9db;
+    --rule: #bcd6e0;
+    --margin: #b4485a;
+    --ink: #24356b;
+    --ink-soft: #4c5c92;
+    --accent: #a9782f;
+    --text: #232323;
+    --error: #a3271d;
+    --good: #2f6f4e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper-dark);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    display:flex;
+    justify-content:center;
+    padding: 24px 12px;
+  }
+  .ledger{
+    position:relative;
+    width:100%;
+    max-width: 920px;
+    background:
+      repeating-linear-gradient(
+        var(--paper),
+        var(--paper) 37px,
+        var(--rule) 38px,
+        var(--paper) 39px
+      );
+    border-radius: 4px;
+    box-shadow: 0 12px 40px rgba(30,30,20,0.18), 0 2px 6px rgba(30,30,20,0.12);
+    padding: 38px 30px 34px 64px;
+    overflow: hidden;
+  }
+  .margin-rule{
+    position:absolute;
+    top:0; bottom:0;
+    left: 42px;
+    width: 2px;
+    background: var(--margin);
+    opacity: 0.55;
+  }
+  .page-number{
+    position:absolute;
+    top: 14px;
+    left: 16px;
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size: 22px;
+    color: var(--margin);
+    transform: rotate(-3deg);
+  }
+  header{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap: 14px;
+    margin-bottom: 22px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--margin);
+  }
+  .month-input{
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size: 40px;
+    color: var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom: 2px dashed transparent;
+    width: 220px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .month-input:focus{ outline:none; border-bottom-color: var(--ink-soft); }
+  .month-controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+    font-size: 13px;
+  }
+  select, button, input[type=number], input[type=text]{
+    font-family:'Inter', sans-serif;
+  }
+  select{
+    padding:6px 8px;
+    border-radius:6px;
+    border:1px solid #c9c2ad;
+    background:#fff;
+    color:var(--text);
+    font-size:13px;
+  }
+  button{
+    padding:7px 12px;
+    border-radius:6px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color:#fff;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition: transform .08s ease, box-shadow .08s ease, opacity .15s ease;
+  }
+  button.secondary{
+    background: transparent;
+    color: var(--ink);
+  }
+  button:hover{ transform: translateY(-1px); box-shadow: 0 3px 8px rgba(36,53,107,0.25);}
+  button:active{ transform: translateY(0); }
+  button:disabled{opacity:.45; cursor:not-allowed; transform:none; box-shadow:none;}
+
+  table{
+    width:100%;
+    border-collapse: collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14px;
+  }
+  thead th{
+    text-align:right;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-soft);
+    padding: 4px 8px 10px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+  thead th:first-child{ text-align:left; }
+  tbody td{
+    padding: 6px 8px;
+    text-align:right;
+    vertical-align:middle;
+    border-bottom: 1px solid rgba(180,72,90,0.15);
+  }
+  tbody td:first-child{ text-align:left; }
+  tbody input, .main-meter input, .bill-summary input{
+    width: 100%;
+    max-width: 92px;
+    text-align:right;
+    padding: 4px 6px;
+    border: 1px solid #d6d0bd;
+    border-radius: 4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    background:#fffdf8;
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button{
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .main-meter{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 18px;
+    align-items:center;
+    background: rgba(255,255,255,0.5);
+    border: 1px dashed #c9c2ad;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-size: 13.5px;
+  }
+  .main-meter label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:600;
+    color: var(--ink);
+  }
+  .main-meter input{ max-width:110px; font-size:14px; }
+  .main-meter .main-units{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    color: var(--accent);
+  }
+  tbody input.name-input{
+    max-width: 150px;
+    text-align:left;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    color: var(--ink);
+  }
+  tbody input:focus{ outline:2px solid var(--ink-soft); outline-offset:1px; }
+  .units-cell{ font-weight:600; color: var(--ink); }
+  .fixed-cell{ font-weight:600; color: var(--ink-soft); }
+  .amount-cell{ font-weight:700; color: var(--accent); }
+  .remove-btn{
+    background:transparent;
+    border:none;
+    color: var(--error);
+    font-size: 17px;
+    cursor:pointer;
+    padding: 0 4px;
+    line-height:1;
+  }
+  .remove-btn:hover{ transform: scale(1.15); }
+
+  tfoot td{
+    padding: 10px 8px 4px;
+    font-weight:700;
+    font-family:'IBM Plex Mono', monospace;
+    border-top: 2px solid var(--ink);
+    text-align:right;
+  }
+  tfoot td:first-child{ text-align:left; font-family:'Inter',sans-serif; }
+  tfoot .grand{ color: var(--accent); text-decoration: underline; text-underline-offset:4px; }
+
+  .add-row-wrap{ margin: 14px 0 26px; }
+
+  .bill-summary{
+    background: rgba(255,255,255,0.55);
+    border: 1px dashed #c9c2ad;
+    border-radius: 8px;
+    padding: 16px 18px;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+  .summary-inputs{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+  .bill-summary label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size: 13.5px;
+    font-weight:600;
+    color: var(--ink);
+  }
+  .bill-summary input{
+    padding: 5px 8px;
+    border-radius:6px;
+    border:1px solid #c9c2ad;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    max-width: 120px;
+    background:#fffdf8;
+  }
+  .calc-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .calc-line span{ font-weight:700; color: var(--ink); }
+  #diffLine.warn{ color: var(--error); font-weight:600; }
+  #diffLine.ok{ color: var(--good); font-weight:600; }
+
+  .status{
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    min-height: 16px;
+  }
+
+  @media (max-width: 640px){
+    .ledger{ padding: 30px 14px 26px 40px; }
+    .margin-rule{ left: 22px; }
+    .month-input{ font-size:30px; width:160px; }
+    table{ font-size:12px; }
+    tbody input{ max-width:60px; }
+    tbody input.name-input{ max-width:90px; }
+    thead th{ font-size:10px; padding:4px 4px 8px;}
+    tbody td{ padding:5px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ledger">
+  <div class="margin-rule"></div>
+  <div class="page-number" id="pageNumber">1</div>
+
+  <header>
+    <input class="month-input" id="monthInput" placeholder="MONTH" value="" spellcheck="false">
+    <div class="month-controls">
+      <select id="monthSelect"><option value="">— saved months —</option></select>
+      <button class="secondary" id="loadBtn">Load</button>
+      <button class="secondary" id="carryBtn">Carry forward →</button>
+      <button id="saveBtn">Save month</button>
+    </div>
+  </header>
+
+  <div class="main-meter">
+    <span style="font-weight:700;color:var(--ink);">Main / parent meter</span>
+    <label>Current <input type="text" inputmode="decimal" id="mainCurr" placeholder="0" value=""></label>
+    <label>Previous <input type="text" inputmode="decimal" id="mainPrev" placeholder="0" value=""></label>
+    <span>Main units = <span class="main-units" id="mainUnitsDisplay">0</span></span>
+  </div>
+
+  <table id="ledgerTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Current<br>reading</th>
+        <th>Previous<br>reading</th>
+        <th>Base<br>units</th>
+        <th>Adj.<br>(auto)</th>
+        <th>Allotted<br>units</th>
+        <th>Fixed (₹)<br>(auto)</th>
+        <th>Amount (₹)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td></td><td></td><td></td><td></td>
+        <td id="totalUnits">0</td>
+        <td id="totalFixed">0</td>
+        <td class="grand" id="grandTotal">0</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="add-row-wrap">
+    <button class="secondary" id="addRow">+ Add person</button>
+  </div>
+
+  <div class="bill-summary">
+    <div class="summary-inputs">
+      <label>Total Amt (₹)
+        <input type="text" inputmode="decimal" id="billTotal" placeholder="0" value="">
+      </label>
+      <label>Energy Charges (₹)
+        <input type="text" inputmode="decimal" id="energyCharges" placeholder="0" value="">
+      </label>
+      <label>No. of People
+        <input type="text" inputmode="numeric" id="numPeople" placeholder="0" value="">
+      </label>
+    </div>
+
+    <div class="calc-line">
+      Fixed / person = (Total Amt − Energy Charges) ÷ People = 
+      (<span id="totalAmtDisplay">0</span> − <span id="energyDisplay">0</span>) ÷ <span id="peopleDisplay">0</span> = 
+      <span id="perPersonFixedDisplay">₹0</span>
+    </div>
+    <div class="calc-line">Rate / unit = Energy Charges ÷ Total units = <span id="rateDisplay">—</span></div>
+    <div class="calc-line" id="diffLine"></div>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+(function(){
+  let idCounter = 1;
+
+  // Initialized empty so inputs are completely manual
+  let people = [
+    { id: idCounter++, name: '', prev: '', curr: '' }
+  ];
+
+  const rowsEl = document.getElementById('rows');
+  const totalUnitsEl = document.getElementById('totalUnits');
+  const totalFixedEl = document.getElementById('totalFixed');
+  const grandTotalEl = document.getElementById('grandTotal');
+  const billTotalEl = document.getElementById('billTotal');
+  const energyChargesEl = document.getElementById('energyCharges');
+  const numPeopleEl = document.getElementById('numPeople');
+
+  const totalAmtDisplayEl = document.getElementById('totalAmtDisplay');
+  const energyDisplayEl = document.getElementById('energyDisplay');
+  const peopleDisplayEl = document.getElementById('peopleDisplay');
+  const perPersonFixedDisplayEl = document.getElementById('perPersonFixedDisplay');
+
+  const rateDisplayEl = document.getElementById('rateDisplay');
+  const diffLineEl = document.getElementById('diffLine');
+  const statusEl = document.getElementById('status');
+  const monthInput = document.getElementById('monthInput');
+  const monthSelect = document.getElementById('monthSelect');
+  const mainPrevEl = document.getElementById('mainPrev');
+  const mainCurrEl = document.getElementById('mainCurr');
+  const mainUnitsDisplayEl = document.getElementById('mainUnitsDisplay');
+
+  // Set default count to current row count
+  numPeopleEl.value = people.length;
+
+  function toNum(v){
+    const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function fmt(n){
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+
+  function baseUnits(p){
+    if (p.curr === '' || p.prev === '') return 0;
+    return toNum(p.curr) - toNum(p.prev);
+  }
+
+  function render(){
+    rowsEl.innerHTML = '';
+
+    const bill = toNum(billTotalEl.value);
+    const energy = toNum(energyChargesEl.value);
+    const manualCount = toNum(numPeopleEl.value);
+    const peopleCount = manualCount > 0 ? manualCount : (people.length || 1);
+
+    const calcFixedPerPerson = (bill - energy) / peopleCount;
+
+    totalAmtDisplayEl.textContent = fmt(bill);
+    energyDisplayEl.textContent = fmt(energy);
+    peopleDisplayEl.textContent = peopleCount;
+    perPersonFixedDisplayEl.textContent = '₹' + fmt(calcFixedPerPerson);
+
+    const mainUnits = toNum(mainCurrEl.value) - toNum(mainPrevEl.value);
+    mainUnitsDisplayEl.textContent = fmt(mainUnits);
+
+    const sumBase = people.reduce((s, p) => s + baseUnits(p), 0);
+    const scale = sumBase > 0 ? mainUnits / sumBase : 1;
+
+    let totalUnitsRounded = 0;
+    const rows = people.map(p => {
+      const base = baseUnits(p);
+      const allotted = Math.round(base * scale);
+      const adj = allotted - base;
+      totalUnitsRounded += allotted;
+      return { p, base, adj, allotted };
+    });
+
+    const totalFixedCalculated = calcFixedPerPerson * people.length;
+    const rate = totalUnitsRounded > 0 ? (bill - totalFixedCalculated) / totalUnitsRounded : 0;
+
+    let grand = 0;
+    rows.forEach(({p, base, adj, allotted}) => {
+      const amount = Math.round(calcFixedPerPerson + allotted * rate);
+      grand += amount;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="name-input" type="text" data-field="name" data-id="${p.id}" placeholder="Name" value="${p.name || ''}"></td>
+        <td><input type="text" inputmode="decimal" data-field="curr" data-id="${p.id}" placeholder="0" value="${p.curr !== undefined ? p.curr : ''}"></td>
+        <td><input type="text" inputmode="decimal" data-field="prev" data-id="${p.id}" placeholder="0" value="${p.prev !== undefined ? p.prev : ''}"></td>
+        <td class="units-cell">${fmt(base)}</td>
+        <td class="units-cell">${adj >= 0 ? '+' : ''}${fmt(adj)}</td>
+        <td class="units-cell">${fmt(allotted)}</td>
+        <td class="fixed-cell">${fmt(calcFixedPerPerson)}</td>
+        <td class="amount-cell">${base < 0 ? '⚠' : fmt(amount)}</td>
+        <td><button class="remove-btn" data-remove="${p.id}" title="Remove">✕</button></td>
+      `;
+      rowsEl.appendChild(tr);
+    });
+
+    totalUnitsEl.textContent = fmt(totalUnitsRounded);
+    totalFixedEl.textContent = fmt(totalFixedCalculated);
+    grandTotalEl.textContent = fmt(grand);
+    rateDisplayEl.textContent = totalUnitsRounded > 0 ? '₹' + rate.toFixed(3) + ' / unit' : '— (need units > 0)';
+
+    const diff = bill - grand;
+    if (Math.abs(diff) < 1) {
+      diffLineEl.className = 'calc-line ok';
+      diffLineEl.textContent = '✓ Split matches the total bill (rounding within ₹1).';
+    } else {
+      diffLineEl.className = 'calc-line warn';
+      diffLineEl.textContent = (diff > 0 ? '⚠ ₹' + fmt(diff) + ' of the bill is unallocated (rounding).' : '⚠ Split exceeds the bill by ₹' + fmt(-diff) + ' (rounding).');
+    }
+
+    bindRowEvents();
+  }
+
+  function bindRowEvents(){
+    rowsEl.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', e => {
+        const id = Number(e.target.dataset.id);
+        const field = e.target.dataset.field;
+        const person = people.find(p => p.id === id);
+        if (!person) return;
+        person[field] = e.target.value;
+        const caret = e.target.selectionStart;
+        render();
+        const el = document.querySelector(`input[data-id="${id}"][data-field="${field}"]`);
+        if (el) {
+          el.focus();
+          el.setSelectionRange(caret, caret);
+        }
+      });
+    });
+    rowsEl.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = Number(e.target.dataset.remove);
+        people = people.filter(p => p.id !== id);
+        numPeopleEl.value = people.length;
+        render();
+      });
+    });
+  }
+
+  document.getElementById('addRow').addEventListener('click', () => {
+    people.push({ id: idCounter++, name: '', prev: '', curr: '' });
+    numPeopleEl.value = people.length;
+    render();
+  });
+
+  billTotalEl.addEventListener('input', render);
+  energyChargesEl.addEventListener('input', render);
+  numPeopleEl.addEventListener('input', render);
+  mainPrevEl.addEventListener('input', render);
+  mainCurrEl.addEventListener('input', render);
+
+  // ---------- persistence ----------
+  function refreshMonthList() {
+    try {
+      monthSelect.innerHTML = '<option value="">— saved months —</option>';
+      const keys = Object.keys(localStorage)
+        .filter(k => k.startsWith('elecledger:'))
+        .sort();
+
+      keys.forEach(k => {
+        const monthName = k.replace('elecledger:', '');
+        const opt = document.createElement('option');
+        opt.value = monthName;
+        opt.textContent = monthName;
+        monthSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.error('Could not list saved months', err);
+    }
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const month = monthInput.value.trim().toUpperCase() || 'UNTITLED';
+    const payload = {
+      billTotal: billTotalEl.value,
+      energyCharges: energyChargesEl.value,
+      numPeople: numPeopleEl.value,
+      mainPrev: mainPrevEl.value,
+      mainCurr: mainCurrEl.value,
+      people: people.map(({id, ...rest}) => rest)
+    };
+
+    try {
+      localStorage.setItem('elecledger:' + month, JSON.stringify(payload));
+      statusEl.textContent = 'Saved "' + month + '" — you can reload it anytime from the dropdown.';
+      refreshMonthList();
+    } catch (err) {
+      statusEl.textContent = 'Save failed: ' + err.message;
+    }
+  });
+
+  document.getElementById('loadBtn').addEventListener('click', () => {
+    const month = monthSelect.value;
+    if (!month) {
+      statusEl.textContent = 'Pick a saved month first.';
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem('elecledger:' + month);
+      if (!raw) {
+        statusEl.textContent = 'Nothing saved under that name yet.';
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      billTotalEl.value = data.billTotal ?? '';
+      energyChargesEl.value = data.energyCharges ?? '';
+      mainPrevEl.value = data.mainPrev != null ? data.mainPrev : '';
+      mainCurrEl.value = data.mainCurr != null ? data.mainCurr : '';
+      people = Array.isArray(data.people)
+        ? data.people.map(p => ({ id: idCounter++, ...p }))
+        : [];
+      numPeopleEl.value = data.numPeople ?? people.length;
+      monthInput.value = month;
+
+      render();
+      statusEl.textContent = 'Loaded "' + month + '".';
+    } catch (err) {
+      statusEl.textContent = 'Failed to load: ' + err.message;
+    }
+  });
+
+  document.getElementById('carryBtn').addEventListener('click', () => {
+    people = people.map(p => ({
+      ...p,
+      prev: p.curr,
+      curr: ''
+    }));
+    mainPrevEl.value = mainCurrEl.value;
+    mainCurrEl.value = '';
+    statusEl.textContent = 'Previous readings updated to last month\'s current readings. Enter this month\'s current readings, then save under a new month name.';
+    render();
+  });
+
+  refreshMonthList();
+  render();
+})();
+</script>
+</body>
+</html>
